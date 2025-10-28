@@ -1,43 +1,37 @@
-# DirectX11 Overlay con ImGui — Ejemplo Técnico Avanzado
+# DirectX11 Overlay with ImGui — Advanced Technical Example
 
-Este proyecto implementa un **overlay en tiempo real sobre ventanas externas** utilizando **DirectX 11** e **ImGui**, con un sistema de actualización independiente que sincroniza la posición y el tamaño del overlay respecto a la ventana objetivo.
+This project implements a **real-time overlay on external windows** using **DirectX 11** and **ImGui**, with an independent update system that synchronizes the overlay’s position and size relative to the target window.
 
-El objetivo principal es **demostrar técnicas avanzadas de renderizado y gestión de ventanas en Win32**, sin usar frameworks externos de alto nivel.  
-Está diseñado con un enfoque educativo y técnico, **no invasivo**, para ilustrar conceptos de *real-time rendering*, *window composition* y *sincronización con ventanas externas*.
+The main goal is to **demonstrate advanced rendering and window-management techniques on Win32**, without relying on high-level external frameworks.
+It is designed with an educational and technical focus, in a **non-intrusive** way, to illustrate concepts of *real-time rendering*, *window composition*, and *synchronization with external windows*.
 
----
+## Main Features
 
-## Características principales
+* **Rendering via DirectX 11** with its own device, context, and swap chain.
+* **Dear ImGui integration** (Win32 + DX11 backend).
+* **Transparent, non-interactive overlay** layered above an external window without blocking input (click-through).
+* **Dynamic position and size updates** when the target window moves or resizes.
+* **Dedicated synchronization thread** controlling visibility, focus, and overlay window attributes.
+* **Hotkey (F2)** to enable/disable overlay rendering without closing the application.
+* **Automatic buffer recreation** on resize events.
 
-- **Renderizado mediante DirectX 11** con contexto y *swap chain* propio.  
-- **Integración con Dear ImGui** (backend Win32 + DX11).  
-- **Overlay transparente y no interactivo** que se superpone sobre una ventana externa sin bloquearla (clic-through).  
-- **Actualización dinámica de posición y tamaño** al moverse o redimensionarse la ventana objetivo.  
-- **Hilo de sincronización dedicado** que controla visibilidad, foco y atributos de la ventana overlay.  
-- **Hotkey (F2)** para activar o desactivar el renderizado del overlay sin cerrar la aplicación.  
-- **Recreación automática de buffers** al detectar cambios de tamaño.
+## Architecture
 
----
+The main `Overlay` class encapsulates three components:
 
-## Arquitectura
+* `Window` — Manages the overlay window (creation, dimensions, and extended styles `WS_EX_*`).
+* `D3D11Manager` — Initializes and maintains DirectX objects (`ID3D11Device`, `IDXGISwapChain`, `ID3D11RenderTargetView`).
+* `update()` — Auxiliary thread that synchronizes position/size and controls the `doDraw` flag.
 
-La clase principal `Overlay` encapsula tres componentes:
+### General Flow
 
-- `Window` — Gestión de la ventana overlay (creación, dimensiones, atributos `WS_EX_*`).  
-- `D3D11Manager` — Inicialización y mantenimiento de objetos DirectX (`Device`, `SwapChain`, `RenderTargetView`).  
-- `update()` — Hilo auxiliar que sincroniza posición/tamaño y controla `doDraw`.
+1. **Initialization**: create the overlay window, configure extended styles, initialize D3D11, and launch the `update` thread.
+2. **Render loop**: process messages, start ImGui `NewFrame`, draw (only if the target window has focus), and present the frame.
+3. **Synchronization**: the `update` thread monitors the target window with `GetWindowRect`, calls `MoveWindow`/`SetWindowPos`, and flags `needResize` to recreate buffers when needed.
 
-### Flujo general
+## Target Window Detection (included example)
 
-1. **Inicialización**: crear ventana overlay, configurar estilos extendidos, inicializar D3D11, lanzar hilo `update`.  
-2. **Render loop**: procesar mensajes, `NewFrame` ImGui, dibujar (si la ventana objetivo tiene foco), presentar frame.  
-3. **Sincronización**: el hilo `update` monitoriza la ventana objetivo con `GetWindowRect`, llama a `MoveWindow`/`SetWindowPos` y marca `needResize` para recrear buffers cuando haga falta.
-
----
-
-## Detección de la ventana objetivo (ejemplo incluido)
-
-En este ejemplo el `wWinMain` obtiene el PID del proceso objetivo (Notepad) y recupera su `HWND` con las funciones auxiliares `getProcess` y `getWindowByPid`. A partir de ahí se instancia el `Overlay` pasando el `HWND` objetivo:
+In this example, `wWinMain` retrieves the target process PID (Notepad) and obtains its `HWND` using helper functions `getProcess` and `getWindowByPid`. Then it instantiates `Overlay` with the target `HWND`:
 
 ```cpp
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
@@ -51,3 +45,4 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
     overlay.shutdown();
 }
+```
